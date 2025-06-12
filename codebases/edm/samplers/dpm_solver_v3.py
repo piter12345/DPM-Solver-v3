@@ -119,6 +119,9 @@ class DPM_Solver_v3:
         elif skip_type == "edm":
             self.indexes, self.timesteps = self.get_timesteps_edm(N=steps, device=device)
             self.timesteps = self.convert_to_timesteps(self.indexes, device)
+        elif skip_type == "schedule_opt":
+            self.indexes = np.load(os.path.join(statistics_dir, "schedule_opt.npz"))["idxs"]
+            self.timesteps = self.convert_to_timesteps(self.indexes, device)
         else:
             raise ValueError(f"Unsupported timestep strategy {skip_type}")
 
