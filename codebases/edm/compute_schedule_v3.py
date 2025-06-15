@@ -149,7 +149,7 @@ def compute_schedule(opt):
     framework = EDM(opt.ckp_path) 
 
     statistics_dir = os.path.join(
-        workdir, "statistics", f"{opt.ckpt_path}__{opt.n_timesteps}_{num_gpus}_{opt.n_batch}_{opt.batch_size}"
+        workdir, "statistics", f"{opt.ckp_path}__{opt.n_timesteps}_{num_gpus}_{opt.n_batch}_{opt.batch_size}"
     )
     os.makedirs(statistics_dir, exist_ok=True)
 
