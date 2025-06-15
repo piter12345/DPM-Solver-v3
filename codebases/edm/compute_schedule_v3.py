@@ -82,6 +82,8 @@ def elbo(x_t, x_0, x_hat):
 def compute_elbos(
     framework, statistics_dir, MAX_BATCH, n_timesteps, batch_size, num_gpus, device, r
 ):
+
+    print(f"compute_elbos ({r})")
     torch.cuda.set_device(r)
     train_ds, _, _ = get_dataset_multi_host(framework.data, batch_size, num_slices=num_gpus, slice=r)
 
@@ -94,7 +96,7 @@ def compute_elbos(
         return
     elbos_lst = [0] * len(timesteps)
     with torch.no_grad():
-        for j, t in tqdm(enumerate(timesteps), desc="Computing l..."):
+        for j, t in tqdm(enumerate(timesteps), desc="Computing elbos..."):
             time_start = time.time()
             for i, batch in enumerate(iter(train_ds)):
                 if i >= MAX_BATCH:
@@ -143,7 +145,6 @@ def compute_schedule(opt):
 
     # Create data normalizer and its inverse
     workdir = opt.workdir
-    checkpoint_dir = os.path.join(workdir, "checkpoints")
 
     framework = EDM(opt.ckp_path) 
 
@@ -155,6 +156,7 @@ def compute_schedule(opt):
     import torch.multiprocessing as mp
 
     mp.set_start_method(method="spawn", force=True)
+    print("Spawning processes...")
     processes_l = [
         mp.Process(
             target=compute_elbos,
