@@ -164,7 +164,6 @@ def compute_schedule(opt):
                 framework,
                 statistics_dir,
                 opt.n_batch,
-                opt.config,
                 opt.n_timesteps,
                 opt.batch_size,
                 num_gpus,
