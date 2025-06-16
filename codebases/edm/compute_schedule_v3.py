@@ -52,11 +52,11 @@ def compute_elbos(
 ):
 
     print(f"compute_elbos")
-    trainloader, _, _ = get_dataset_multi_host(framework.data, batch_size)
+    trainloader = get_dataset_multi_host(batch_size)
 
     ns = framework.noise_schedule
-    timesteps = framework.get_timesteps(n_timesteps, device)
-    framework.create_model(device)
+    framework.load_model(device)
+    _, timesteps = framework.get_timesteps(device)
     model_fn = framework.model_fn
 
     if os.path.exists(os.path.join(statistics_dir, f"elbos.npz")):
@@ -71,12 +71,13 @@ def compute_elbos(
                 time_spent = time.time() - time_start
                 print(f"Batch {i}/{MAX_BATCH}, {time_spent:.2f} s")
                 train_batch = batch.to(device).float()
-                train_batch = train_batch.permute(0, 3, 1, 2)
+                # train_batch = train_batch.permute(0, 3, 1, 2)
                 x = train_batch
 
                 v = torch.randint(0, 2, x.shape, device=device) * 2.0 - 1
                 z = torch.randn_like(x)
                 alpha_t, sigma_t = ns.marginal_alpha(t), ns.marginal_std(t)
+                print(x.shape, alpha_t.shape, t.shape)
                 perturbed_data = alpha_t * x + sigma_t * z
 
                 x_hat = model_fn(perturbed_data, t)
@@ -114,7 +115,7 @@ def compute_schedule(opt):
     # Create data normalizer and its inverse
     workdir = opt.workdir
 
-    framework = EDM(opt.ckp_path) 
+    framework = EDM(opt.ckp_path, device) 
 
     statistics_dir = os.path.join(
         workdir, "statistics", f"{opt.ckp_path}__{opt.n_timesteps}_{num_gpus}_{opt.n_batch}_{opt.batch_size}"

@@ -50,35 +50,37 @@ class EDM:
         data.uniform_dequantization = False
         data.num_channels = 3
 
-    def __init__(self, ckp_path):
+    def __init__(self,
+                 ckp_path,
+                 device,
+                 num_steps=18,
+                 sigma_min=0.002,
+                 sigma_max=80,
+                 rho=7):
         self.get_default_config()
         self.noise_schedule = NoiseScheduleEDM()
+
+        self.num_steps=num_steps
+        self.sigma_min = sigma_min
+        self.sigma_max = sigma_max
+        self.rho = rho
+
+        t_0 = sigma_min
+        t_T = sigma_max
+        self.lambda_T = self.noise_schedule.marginal_lambda(torch.tensor(t_T).to(device)).detach().cpu().numpy()
+        self.lambda_0 = self.noise_schedule.marginal_lambda(torch.tensor(t_0).to(device)).detach().cpu().numpy()
         self.ckp_path = ckp_path
 
-    def get_timesteps(self, N, device):
+    def get_timesteps(self, device):
         """Constructs the noise schedule of Karras et al. (2022)."""
+        step_indices = torch.arange(self.num_steps, dtype=torch.float64, device=device)
 
-        rho = 7.0  # 7.0 is the value used in the paper
+        t_steps = (self.sigma_max ** (1 / self.rho) + step_indices / (self.num_steps - 1) * (self.sigma_min ** (1 / self.rho) - self.sigma_max ** (1 / self.rho))) ** self.rho
+        t_steps = torch.cat([self.net.round_sigma(t_steps), torch.zeros_like(t_steps[:1])]) # t_N = 0
 
-        sigma_min: float = np.exp(-self.lambda_0)
-        sigma_max: float = np.exp(-self.lambda_T)
-        ramp = np.linspace(0, 1, N + 1)
-        min_inv_rho = sigma_min ** (1 / rho)
-        max_inv_rho = sigma_max ** (1 / rho)
-        sigmas = (max_inv_rho + ramp * (min_inv_rho - max_inv_rho)) ** rho
-        lambdas = torch.Tensor(-np.log(sigmas)).to(device)
-        timesteps = self.noise_schedule.inverse_lambda(lambdas)
+        return step_indices, t_steps
 
-        indexes = list(
-            (self.statistics_steps * (lambdas - self.lambda_T) / (self.lambda_0 - self.lambda_T))
-            .round()
-            .cpu()
-            .numpy()
-            .astype(np.int64)
-        )
-        return indexes, timesteps
-
-    def create_model(self, device):
+    def load_model(self, device):
         # Load network.
         print(f'Loading network from "{self.ckp_path}"...')
         with open(self.ckp_path, "rb") as f:
